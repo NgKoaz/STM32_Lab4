@@ -111,12 +111,6 @@ int main(void)
   SCH_Init();
 
 
-  HAL_GPIO_WritePin(GPIOA, LED0_Pin, 1);
-  HAL_GPIO_WritePin(GPIOA, LED1_Pin, 1);
-  HAL_GPIO_WritePin(GPIOA, LED2_Pin, 1);
-  HAL_GPIO_WritePin(GPIOA, LED3_Pin, 1);
-  HAL_GPIO_WritePin(GPIOA, LED4_Pin, 1);
-
   SCH_Add_Task(Blinking_LED0, 0, 500);
   SCH_Add_Task(Blinking_LED1, 10, 1000);
   SCH_Add_Task(Blinking_LED2, 10, 1500);
@@ -361,7 +355,7 @@ void UART_Report_Status(uint8_t errorCode){
 void UART_Report_Timestamp(void){
 	if (isTaskJustRun == 0) return;
 	isTaskJustRun = 0;
-	sprintf(strTimestamp, "%u: ID=%u\r\n", timestamp, TaskIdJustRun);
+	sprintf(strTimestamp, "%u0ms: ID=%u\r\n", timestamp, TaskIdJustRun);
 	HAL_UART_Transmit(&huart1, (uint8_t*) strTimestamp, strlen(strTimestamp), HAL_MAX_DELAY);
 }
 /* USER CODE END 4 */

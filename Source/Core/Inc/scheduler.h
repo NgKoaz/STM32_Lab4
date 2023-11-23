@@ -11,8 +11,6 @@
 #include "main.h"
 
 #define SCH_MAX_TASKS 	10
-#define nullptr 		NULL
-#define null			0x00000000
 
 #define NO_ERROR											0x00
 #define ERROR_SCH_TOO_MANY_TASKS 							0x01
@@ -24,24 +22,30 @@
 #define ERROR_SCH_CAN_BUS_ERROR								0x40
 #define ERROR_I2C_WRITE_BYTE_AT24C64						0x80
 
+
+#define TIMER_CYCLE 10
+
 //OPTIONAL DEFINE HERE
 #define SCH_REPORT_ERRORS
 
 
-typedef struct {
-	void (*pFunc)(void);
-	uint32_t	Delay;
-	uint32_t 	Period;
-	uint8_t 	NextTaskID;
-} sTask;
+struct sTask {
+	void 			(*pFunc)(void);
+	uint32_t		Delay;
+	uint32_t 		Period;
+	uint16_t 		TaskID;
+	struct sTask* 	Next;
+};
 
-extern uint8_t TaskIdJustRun;
+#define sTask struct sTask
+
+extern uint16_t TaskIdJustRun;
 
 void 	SCH_Init(void);
 void 	SCH_Update(void);
-uint8_t SCH_Add_Task(void (*pFunc)(void), uint32_t Delay, uint32_t Period);
+sTask* 	SCH_Add_Task(void (*pFunc)(void), uint32_t Delay, uint32_t Period);
 uint8_t SCH_Dispatch_Tasks(void);
-uint8_t SCH_Delete_Task(uint8_t TaskID);
+uint8_t SCH_Delete_Task(sTask* deleted_task);
 void 	SCH_Sleep(void);
 uint8_t SCH_Report_Status(void);
 

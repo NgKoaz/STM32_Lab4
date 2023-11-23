@@ -6,181 +6,204 @@
  */
 
 #include "scheduler.h"
+#include "stdlib.h"
 
-#define TIMER_CYCLE 10
+sTask* head_task;
 
-short head_taskID;
-sTask list_task[SCH_MAX_TASKS + 1]; //Zero index is not used.
+/*
+ * While loop can be slow or hang a while, then it cannot execute the next task
+ * that task has Delay = 0.
+ * So we need time_skip to make sure it run correct number of times.
+ */
 uint16_t time_skip;
+
+// Number of tasks are ready
 uint16_t count_task;
 
-uint8_t TaskIdJustRun = 0;
+/*
+ * This id will be assign for task, we increase 1 when assign it for TaskID
+ * to make sure it's always available
+ */
+uint16_t next_id;
 
-uint8_t errorPort;
+/*
+ * For display on Terminal
+ * when sometask run at that time it's will print the `timestamp` and `taskID` just ran.
+ */
+uint16_t TaskIdJustRun = 0;
+
+/*
+ * For report error
+ */
 uint8_t errorCode;
-uint8_t lastErrorCode;
-uint32_t errorCount;
-
-uint8_t getTaskId(){
-	for (uint16_t i = 1; i < SCH_MAX_TASKS + 1; i++)
-		if (list_task[i].pFunc == nullptr)
-			return i;
-	//Throw Error
-	return 0;
-}
 
 void SCH_Init(void){
-	head_taskID = null;
-	time_skip = 0;
-	count_task = 0;
-	errorCode = 0;
-	lastErrorCode = 0;
-	errorCount = 30000 / TIMER_CYCLE;
-
-	for (short i = 0; i < SCH_MAX_TASKS + 1; i++){
-		list_task[i].pFunc      = nullptr;
-		list_task[i].NextTaskID = null;
-	}
+	head_task 	= NULL;
+	time_skip 	= 0;
+	count_task 	= 0;
+	next_id 	= 1;
+	errorCode	= 0;
 }
 
 void SCH_Update(void){
-	if (head_taskID == null) {
+	if (head_task == NULL) {
+		/*
+		 * This is for situation, you just have one task run.
+		 * When task ran completely, it will dequeue, but at this time
+		 * SCH_Update can be run, and if we not add 1 for time_skip
+		 * instead of do nothing, your task will run wrong time.
+		 */
 		time_skip = (count_task > 0) ? time_skip + 1 : 0;
 		return;
 	}
 	time_skip++;
-	if (list_task[head_taskID].Delay > 0){
-		int temp = list_task[head_taskID].Delay - time_skip;
+	if (head_task->Delay > 0){
+		int temp = head_task->Delay - time_skip;
 		if (temp >= 0) {
-			list_task[head_taskID].Delay = temp;
+			head_task->Delay = temp;
 			time_skip = 0;
 		} else {
-			list_task[head_taskID].Delay = 0;
+			head_task->Delay = 0;
 			time_skip = 0 - temp;
 		}
 	}
 }
 
-uint8_t Create_Task(void (*pFunc)(void), uint32_t Delay, uint32_t Period){
+sTask* Create_Task(void (*pFunc)(void), uint32_t Delay, uint32_t Period){
 	if (count_task > SCH_MAX_TASKS){
 		errorCode = ERROR_SCH_TOO_MANY_TASKS;
-		return SCH_MAX_TASKS;
+		return NULL;
 	}
-	uint8_t newId = getTaskId();
-	//Throw Error
-	if (newId == 0) return -1;
+	uint16_t newId = next_id++;
 
 	Delay  /= TIMER_CYCLE;
 	Period /= TIMER_CYCLE;
 
-	list_task[newId].pFunc			= pFunc;
-	list_task[newId].Delay 		= Delay + time_skip;
-	list_task[newId].Period	    = Period;
-	list_task[newId].NextTaskID = null;
-	count_task++;
-	return newId;
+	sTask* newTask = malloc(sizeof(sTask));
+
+	newTask->pFunc 		= pFunc;
+	newTask->Delay 		= Delay + time_skip;
+	newTask->Period	    = Period;
+	newTask->TaskID		= newId;
+	newTask->Next 		= NULL;
+
+	return newTask;
 }
 
-uint8_t Enqueue_Task(uint8_t newTaskID){
+/*
+ * Enqueue and modify Delay
+ * Example: A->Delay = 1000, B->Delay = 2000, C->Delay = 3000
+ * When we completely add all of them in queue, the queue will be
+ * Element 1: A->Delay = 1000, Element 2: B->Delay = 1000, C->Delay = 1000
+ */
+sTask* Enqueue_Task(sTask* newTask){
 	//First task in queue.
-	if (head_taskID == null){
-		head_taskID = newTaskID;
-		return newTaskID;
+	if (head_task == NULL){
+		head_task = newTask;
+		return newTask;
 	}
 
 	//Task will add at middle of queue.
-	uint8_t ini_task = head_taskID;
-	uint8_t pre_task = null;
+	sTask *ini = head_task;
+	sTask *pre = NULL;
 	uint32_t sum = 0;
-	while (ini_task != null){
-		if (sum + list_task[ini_task].Delay > list_task[newTaskID].Delay){
-			if (ini_task == head_taskID){
-				list_task[newTaskID].NextTaskID = head_taskID;
-				head_taskID = newTaskID;
-				list_task[ini_task].Delay -= list_task[newTaskID].Delay;
+	while (ini != NULL){
+		if (sum + ini->Delay > newTask->Delay){
+			if (ini == head_task){
+				newTask->Next = head_task;
+				head_task 	= newTask;
+				ini->Delay -= newTask->Delay;
 			} else {
-				list_task[newTaskID].NextTaskID = ini_task;
-				list_task[pre_task].NextTaskID = newTaskID;
-				list_task[newTaskID].Delay -= sum;
-				list_task[ini_task].Delay  -= list_task[newTaskID].Delay;
+				newTask->Next 	= ini;
+				pre->Next 		= newTask;
+				newTask->Delay -= sum;
+				ini->Delay     -= newTask->Delay;
 			}
-			return newTaskID;
+			return newTask;
 		}
-		sum 	+= list_task[ini_task].Delay;
-		pre_task = ini_task;
-		ini_task = list_task[ini_task].NextTaskID;
+		sum 	+= ini->Delay;
+		pre		 = ini;
+		ini		 = ini->Next;
 	}
 
 	//Task will add of tail
-	if (ini_task == null){
-		list_task[pre_task].NextTaskID = newTaskID;
-		list_task[newTaskID].Delay    -= sum;
+	if (ini == NULL){
+		pre->Next 		= newTask;
+		newTask->Delay -= sum;
 	}
 
-	return newTaskID;
+	return newTask;
 }
 
-uint8_t SCH_Add_Task(void (*pFunc)(void), uint32_t Delay, uint32_t Period){
-	return Enqueue_Task(Create_Task(pFunc, Delay, Period));
+sTask* SCH_Add_Task(void (*pFunc)(void), uint32_t Delay, uint32_t Period){
+	sTask* newTask = Create_Task(pFunc, Delay, Period);
+	if (newTask == NULL){
+		return NULL;
+	}
+	return Enqueue_Task(newTask);
 }
 
 uint8_t SCH_Dispatch_Tasks(void){
-	if (head_taskID == null || list_task[head_taskID].Delay > 0) return 0;
+	if (head_task == NULL || head_task->Delay > 0) return 0;
 
-	//Remove head task out of queue (dequeue, not delete)
-	//and reconfigure `next` and `previous pointer`.
-	uint8_t runningTask = head_taskID;
-	head_taskID = list_task[head_taskID].NextTaskID;
+	// Remove head task out of queue (dequeue, not delete)
+	// and config delay then enqueue it again.
+	sTask* runningTask = head_task;
+	head_task = head_task->Next;
 
-	list_task[runningTask].NextTaskID = null;
-	list_task[runningTask].Delay 	  = list_task[runningTask].Period;
+	runningTask->Next 	= NULL;
+	runningTask->Delay 	= runningTask->Period;
 
-	//Run task
-	list_task[runningTask].pFunc();
-	TaskIdJustRun = runningTask;
+	// Run task
+	runningTask->pFunc();
+	// Save the task just ran
+	TaskIdJustRun = runningTask->TaskID;
 
-	//Add again if a task has period value isn't equal to 0.
-	if (list_task[runningTask].Period != 0) Enqueue_Task(runningTask);
+	// Add again if a task has period value isn't equal to 0.
+	if (runningTask->Period != 0) Enqueue_Task(runningTask);
 	else SCH_Delete_Task(runningTask);
 
 	return 1;
 }
 
-uint8_t SCH_Delete_Task(uint8_t TaskID){
-	if (list_task[TaskID].pFunc == 0){
+uint8_t Delete_Task(sTask *deleted_task){
+	if (deleted_task == NULL || deleted_task->pFunc == NULL){
 		errorCode = ERROR_SCH_DELETE_NULL_TASK;
 		return 0;
 	}
 	count_task--;
-	if (TaskID == head_taskID){
-		head_taskID = list_task[TaskID].NextTaskID;
+	if (deleted_task == head_task){
+		head_task = (sTask *) head_task->Next;
 	}
 
-	uint8_t next_TaskID = list_task[TaskID].NextTaskID;
-	if (next_TaskID != null){
-		list_task[next_TaskID].Delay    += list_task[TaskID].Delay;
+	if (deleted_task->Next != NULL){
+		deleted_task->Next->Delay    += deleted_task->Delay;
 	}
 
-	uint8_t prev = 0;
-	uint8_t ini = head_taskID;
-	while (ini != TaskID){
-		prev = ini;
-		ini = list_task[ini].NextTaskID;
+	sTask* pre = NULL;
+	sTask* ini = head_task;
+	while (ini != deleted_task){
+		pre = ini;
+		ini = ini->Next;
 	}
 
-	if (prev != null){
-		list_task[prev].NextTaskID = list_task[TaskID].NextTaskID;
+	if (pre != NULL){
+		pre->Next = deleted_task->Next;
 	}
 
-	list_task[TaskID].pFunc 	 = nullptr;
-	list_task[TaskID].NextTaskID = null;
+	deleted_task->pFunc	= NULL;
+	deleted_task->Next	= NULL;
 
 	return 1;
 }
 
+uint8_t SCH_Delete_Task(sTask* deleted_task){
+	return Delete_Task(deleted_task);
+}
+
 void SCH_Sleep(void){
 	//Still task need to run
-	if (list_task[head_taskID].Delay == 0) return
+	if (head_task->Delay == 0) return;
 	//No task to run at this time, then go sleep
 	HAL_SuspendTick();
 	HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
