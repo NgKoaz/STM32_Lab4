@@ -28,7 +28,7 @@
   <PWI>
    <POPUP w="800" x="48" flags="00000002" y="160" h="200" pid="0" iid="-1">
     <PROPERTIES>
-     <ITEM name="Message Column Width">661</ITEM>
+     <ITEM name="Message Column Width">-22</ITEM>
      <ITEM name="ShowGrid">No</ITEM>
      <ITEM name="Source Column Width">100</ITEM>
      <ITEM name="Time Column Width">120</ITEM>
@@ -41,11 +41,13 @@
      <ITEM name="AutoResize">No</ITEM>
      <ITEM name="Gridlines">Yes</ITEM>
      <ITEM name="Name Column Width">82</ITEM>
+     <ITEM name="Previous Value Column Width">0</ITEM>
      <ITEM name="ShowAddresses">Yes</ITEM>
      <ITEM name="ShowPreviousValues">No</ITEM>
      <ITEM name="ShowTypes">No</ITEM>
      <ITEM name="ShowWatchPoint">Yes</ITEM>
      <ITEM name="TriggerMode">0</ITEM>
+     <ITEM name="Type Column Width">0</ITEM>
      <ITEM name="Value Column Width">82</ITEM>
      <ITEM name="Version">100</ITEM>
      <ITEM name="Watch Expression Column Width">82</ITEM>
@@ -371,14 +373,17 @@
      <ITEM name="AutoResize">No</ITEM>
      <ITEM name="Gridlines">Yes</ITEM>
      <ITEM name="Name Column Width">93</ITEM>
+     <ITEM name="Previous Value Column Width">0</ITEM>
      <ITEM name="ShowAddresses">Yes</ITEM>
      <ITEM name="ShowGlobals">Yes</ITEM>
      <ITEM name="ShowPreviousValues">No</ITEM>
      <ITEM name="ShowTypes">No</ITEM>
      <ITEM name="ShowWatchPoint">No</ITEM>
      <ITEM name="TriggerMode">0</ITEM>
+     <ITEM name="Type Column Width">0</ITEM>
      <ITEM name="Value Column Width">93</ITEM>
      <ITEM name="Version">100</ITEM>
+     <ITEM name="Watch Expression Column Width">0</ITEM>
      <ITEM name="nItems">0</ITEM>
     </PROPERTIES>
    </POPUP>
@@ -391,7 +396,7 @@
    <POPUP w="22" x="788" flags="00000008" y="900" h="18" pid="350" iid="1">
     <PROPERTIES/>
    </POPUP>
-   <POPUP w="1520" x="155" flags="00008023" y="192" h="850" pid="0" iid="3">
+   <POPUP w="1520" x="865" flags="00008023" y="860" h="850" pid="0" iid="3">
     <PROPERTIES>
      <ITEM name="AutoEcho">0</ITEM>
      <ITEM name="HexMode">0</ITEM>

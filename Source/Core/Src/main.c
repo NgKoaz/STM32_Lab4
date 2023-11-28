@@ -24,6 +24,8 @@
 #include "stdio.h"
 #include "string.h"
 #include "scheduler.h"
+#include "input_processing.h"
+#include "input_reading.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,6 +54,8 @@ unsigned int timestamp = 0;
 char *strError;
 char strTimestamp[32];
 uint8_t isTaskJustRun = 0;
+
+sTask* deletedTask = NULL;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -66,6 +70,8 @@ void Blinking_LED1(void);
 void Blinking_LED2(void);
 void Blinking_LED3(void);
 void Blinking_LED4(void);
+void ReadingAndProcessingInput(void);
+void deleteTaskBlinkingLED4(void);
 void UART_Report_Status(uint8_t errorCode);
 void UART_Report_Timestamp(void);
 /* USER CODE END PFP */
@@ -94,7 +100,7 @@ int main(void)
 
   /* USER CODE END Init */
 
-  /* Configur	e the system clock */
+  /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
@@ -110,12 +116,15 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim2);
   SCH_Init();
 
+  Input_Reading_Init();
 
-  SCH_Add_Task(Blinking_LED0, 0, 500);
-  SCH_Add_Task(Blinking_LED1, 10, 1000);
-  SCH_Add_Task(Blinking_LED2, 10, 1500);
-  SCH_Add_Task(Blinking_LED3, 20, 2000);
-  SCH_Add_Task(Blinking_LED4, 20, 2500);
+
+  //SCH_Add_Task(ReadingAndProcessingInput, 0, 10);
+  SCH_Add_Task(Blinking_LED0, 10, 0);
+  SCH_Add_Task(Blinking_LED1, 20, 500);
+  SCH_Add_Task(Blinking_LED2, 30, 1000);
+  SCH_Add_Task(Blinking_LED3, 40, 1500);
+  deletedTask = SCH_Add_Task(Blinking_LED4, 50, 1000);
 
   /* USER CODE END 2 */
 
@@ -312,6 +321,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : BTN_Pin */
+  GPIO_InitStruct.Pin = BTN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(BTN_GPIO_Port, &GPIO_InitStruct);
+
 }
 
 /* USER CODE BEGIN 4 */
@@ -335,6 +350,14 @@ void Blinking_LED3(void){
 void Blinking_LED4(void){
 	HAL_GPIO_TogglePin(GPIOA, LED4_Pin);
 }
+void ReadingAndProcessingInput(void){
+	ButtonReading(BTN);
+
+	FSM_ForInputProcessing(deleteTaskBlinkingLED4, BTN);
+}
+void deleteTaskBlinkingLED4(void){
+	SCH_Delete_Task(deletedTask);
+}
 void UART_Report_Status(uint8_t errorCode){
 	switch(errorCode){
 	case NO_ERROR:
@@ -349,14 +372,14 @@ void UART_Report_Status(uint8_t errorCode){
 	default:
 		strError = "ERROR: Unknown error\r\n";
 	}
-	if (!strcmp(strError, ""))
-		HAL_UART_Transmit(&huart1, (uint8_t*) strError, strlen(strError), HAL_MAX_DELAY);
+	if (errorCode)
+		HAL_UART_Transmit(&huart1, (uint8_t*) strError, strlen(strError), 250);
 }
 void UART_Report_Timestamp(void){
 	if (isTaskJustRun == 0) return;
 	isTaskJustRun = 0;
 	sprintf(strTimestamp, "%u0ms: ID=%u\r\n", timestamp, TaskIdJustRun);
-	HAL_UART_Transmit(&huart1, (uint8_t*) strTimestamp, strlen(strTimestamp), HAL_MAX_DELAY);
+	HAL_UART_Transmit(&huart1, (uint8_t*) strTimestamp, strlen(strTimestamp), 250);
 }
 /* USER CODE END 4 */
 

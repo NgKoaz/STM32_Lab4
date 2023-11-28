@@ -1,0 +1,2 @@
+../Core/Src/input_processing.c:13:6:Input_Processing_Init	4	static
+../Core/Src/input_processing.c:20:6:FSM_ForInputProcessing	16	static

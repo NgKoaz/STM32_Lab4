@@ -143,6 +143,11 @@ sTask* SCH_Add_Task(void (*pFunc)(void), uint32_t Delay, uint32_t Period){
 	return Enqueue_Task(newTask);
 }
 
+
+/*
+ * If no task run => return 0
+ * task run => return 1
+ */
 uint8_t SCH_Dispatch_Tasks(void){
 	if (head_task == NULL || head_task->Delay > 0) return 0;
 
@@ -161,44 +166,46 @@ uint8_t SCH_Dispatch_Tasks(void){
 
 	// Add again if a task has period value isn't equal to 0.
 	if (runningTask->Period != 0) Enqueue_Task(runningTask);
-	else SCH_Delete_Task(runningTask);
-
-	return 1;
-}
-
-uint8_t Delete_Task(sTask *deleted_task){
-	if (deleted_task == NULL || deleted_task->pFunc == NULL){
-		errorCode = ERROR_SCH_DELETE_NULL_TASK;
-		return 0;
-	}
-	count_task--;
-	if (deleted_task == head_task){
-		head_task = (sTask *) head_task->Next;
-	}
-
-	if (deleted_task->Next != NULL){
-		deleted_task->Next->Delay    += deleted_task->Delay;
-	}
-
-	sTask* pre = NULL;
-	sTask* ini = head_task;
-	while (ini != deleted_task){
-		pre = ini;
-		ini = ini->Next;
-	}
-
-	if (pre != NULL){
-		pre->Next = deleted_task->Next;
-	}
-
-	deleted_task->pFunc	= NULL;
-	deleted_task->Next	= NULL;
+	else free(runningTask);
 
 	return 1;
 }
 
 uint8_t SCH_Delete_Task(sTask* deleted_task){
-	return Delete_Task(deleted_task);
+	if (deleted_task == NULL){
+		errorCode = ERROR_SCH_DELETE_NULL_TASK;
+		return 0;
+	}
+	if (deleted_task == head_task){
+		count_task--;
+		head_task = head_task->Next;
+		deleted_task->Next->Delay += deleted_task->Delay;
+		free(deleted_task);
+		return 1;
+	}
+
+	// Find previous of deleted task
+	sTask* pre = NULL;
+	sTask* ini = head_task;
+	while (ini != deleted_task && ini != NULL){
+		pre = ini;
+		ini = ini->Next;
+	}
+
+	if (ini == NULL){
+		// Task not found
+		errorCode = ERROR_SCH_DELETE_NULL_TASK;
+		return 0;
+	}
+
+	if (deleted_task->Next != NULL){
+		deleted_task->Next->Delay += deleted_task->Delay;
+	}
+	if (pre != NULL){
+		pre->Next = deleted_task->Next;
+	}
+	free(deleted_task);
+	return 1;
 }
 
 void SCH_Sleep(void){
